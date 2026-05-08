@@ -1,0 +1,6 @@
+{
+  "last_turn_at": "2026-05-08T07:39:58.618Z",
+  "turn_count": 25,
+  "last_progress_at": "2026-05-08T07:39:58.618Z",
+  "last_agent_output": "정석은 **요청이 컨트롤러에 도착하기 전에 필터가 Authorization 헤더를 검사해서 Spring Security에 로그인 상태를 등록**하는 방식이에요.\n\n흐름은 이렇습니다"
+}

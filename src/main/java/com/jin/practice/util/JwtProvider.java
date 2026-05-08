@@ -40,7 +40,7 @@ public class JwtProvider {
         this.accessTokenExpiration = accessTokenExpiration;
     }
 
-    public JwtDto generateToken(Authentication authentication) {
+    public JwtDto createToken(Authentication authentication) {
         String authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
