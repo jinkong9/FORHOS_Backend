@@ -27,8 +27,26 @@ public class Hospital {
     @Column(name = "open_status")
     private boolean openStatus = true;
 
+    @Column(name = "waiting_people")
+    private int waitingPeople;
+
+    @Column(name = "waiting_time")
+    private int waitingTime;
+
+    @Column(name = "rating_sum")
+    private int ratingSum;
+
+    @Column(name = "rating_count")
+    private int ratingCount;
+
     @ManyToOne
     @JoinColumn(name = "member_id")
     private Member member;
 
+    public double getRating() {
+        if(ratingCount == 0)
+            return 0.0;
+
+        return Math.round(((double) ratingSum/ratingCount)*10) / 10.0;
+    }
 }

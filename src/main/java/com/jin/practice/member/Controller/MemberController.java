@@ -1,13 +1,11 @@
 package com.jin.practice.member.Controller;
 
-import com.jin.practice.member.dto.JwtDto;
-import com.jin.practice.member.dto.LoginDto;
-import com.jin.practice.member.dto.MyDto;
-import com.jin.practice.member.dto.RegisterDto;
+import com.jin.practice.member.dto.*;
 import com.jin.practice.member.service.MemberService;
 import com.jin.practice.util.JwtProvider;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -42,13 +40,23 @@ public class MemberController {
         return ResponseEntity.ok(jwtDto);
     }
 
-    @GetMapping("/my")
-    public ResponseEntity<MyDto> getMyName(
+    @GetMapping("/myinfo")
+    public ResponseEntity<MyInfoDto> getMyInfo(
             // @RequestHeader("Authorization")
             Authentication authentication
     ) {
 
-        MyDto response = memberService.getMyName(authentication.getName());
+        MyInfoDto response = memberService.getMyInfo(authentication.getName());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/myinfo")
+    public ResponseEntity<MyInfoDto> updateMyInfo (
+            Authentication authentication,
+            @RequestBody UpdateMyInfoDto updateMyInfoDto
+    ) {
+        MyInfoDto response = memberService.updateInfo(authentication.getName(), updateMyInfoDto);
 
         return ResponseEntity.ok(response);
     }

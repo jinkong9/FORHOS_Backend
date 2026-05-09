@@ -1,11 +1,9 @@
 package com.jin.practice.member.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,28 +14,54 @@ public class Member {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "member_id")
     private long id;
 
-    @Column
+    @Column(nullable = false, unique = true)
     private String email;
 
-    @Column
+    @Column(nullable = false)
     private String password;
 
-    @Column
+    @Column(nullable = false)
     private String name;
 
-    @Column
+    @Column(nullable = false)
+    private int age;
+
+    @Column(nullable = false, unique = true)
     private String phone;
 
     @Column
-    private LocalDate create_at;
+    private LocalDateTime create_at;
 
-    public Member(String email, String password, String name, String phone, LocalDate create_at) {
+    @Column(nullable = false, length = 50)
+    private String gender;
+
+    @Column(length = 50)
+    private String region;
+
+    @Column
+    private String extra;
+
+    public Member(String email, String password, String name, int age, String phone, String gender, String region, String extra, LocalDateTime create_at) {
         this.email = email;
         this.password = password;
         this.name = name;
+        this.age = age;
         this.phone = phone;
+        this.gender = gender;
+        this.region = region;
+        this.extra = extra;
         this.create_at = create_at;
+    }
+
+    public void updateInfo(String name, Integer age, String gender, String phone, String region, String extra) {
+        if (name != null) this.name = name;
+        if (age != null) this.age = age;
+        if (gender != null) this.gender = gender;
+        if (phone != null) this.phone = phone;
+        if (region != null) this.region = region;
+        if (extra != null) this.extra = extra;
     }
 }

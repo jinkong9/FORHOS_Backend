@@ -8,7 +8,10 @@ public record HospitalDto(
         String name,
         String addr,
         String number,
-        boolean open_status
+        boolean openStatus,
+        int waitingPeople,
+        int waitingTime,
+        double rating
 ) {
     public static HospitalDto from(Hospital hospital) {
         return new HospitalDto(
@@ -16,7 +19,10 @@ public record HospitalDto(
                 hospital.getName(),
                 hospital.getAddr(),
                 hospital.getNumber(),
-                hospital.isOpenStatus()
+                hospital.isOpenStatus(),
+                hospital.getWaitingPeople(),
+                hospital.getWaitingTime(),
+                hospital.getRating()
         );
     }
 }
