@@ -39,10 +39,6 @@ public class Hospital {
     @Column(name = "rating_count")
     private int ratingCount;
 
-    @ManyToOne
-    @JoinColumn(name = "member_id")
-    private Member member;
-
     public double getRating() {
         if(ratingCount == 0)
             return 0.0;
