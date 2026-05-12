@@ -2,6 +2,7 @@ package com.jin.practice.reception.Controller;
 
 import com.jin.practice.reception.dto.ReceptionCreateDto;
 import com.jin.practice.reception.dto.ReceptionDto;
+import com.jin.practice.reception.dto.ReceptionStatusDto;
 import com.jin.practice.reception.service.ReceptionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,4 +43,16 @@ public class ReceptionController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/hospital/{receptionId}/status")
+    public ResponseEntity<ReceptionStatusDto> getQueueStatus(
+            Authentication authentication,
+            @PathVariable Long receptionId
+    ) {
+        ReceptionStatusDto response = receptionService.getReceptionStatus(
+                authentication.getName(),
+                receptionId
+        );
+
+        return ResponseEntity.ok(response);
+    }
 }

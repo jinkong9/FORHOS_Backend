@@ -7,6 +7,8 @@ import com.jin.practice.member.entity.Member;
 import com.jin.practice.reception.Repository.ReceptionRepository;
 import com.jin.practice.reception.dto.ReceptionCreateDto;
 import com.jin.practice.reception.dto.ReceptionDto;
+import com.jin.practice.reception.dto.ReceptionStatusDto;
+import com.jin.practice.reception.entity.QueueStatus;
 import com.jin.practice.reception.entity.Reception;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -68,4 +70,34 @@ public class ReceptionService {
                 .toList();
     }
 
+    public ReceptionStatusDto getReceptionStatus(String email, Long receptionId) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증되지 않은 사용자입니다."));
+
+        Reception reception = receptionRepository.findById(receptionId)
+                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND, "접수 내역을 찾을 수 없습니다."));
+
+        if(reception.getMember().getId() != member.getId()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "본인의 접수만 조회 가능합니다,"
+            );
+        }
+
+        LocalDate today = LocalDate.now();
+        int waitingCount = 0;
+
+        if (reception.getQueueStatus() == QueueStatus.WAITING) {
+            waitingCount = receptionRepository.findByHospital_IdAndQueueDate(
+                            reception.getHospital().getId(),
+                            today
+                    )
+                    .stream()
+                    .filter(item -> item.getQueueStatus() == QueueStatus.WAITING)
+                    .filter(item -> item.getQueueNumber() < reception.getQueueNumber())
+                    .toList()
+                    .size();
+        }
+
+        return ReceptionStatusDto.from(reception, waitingCount);
+    }
 }
