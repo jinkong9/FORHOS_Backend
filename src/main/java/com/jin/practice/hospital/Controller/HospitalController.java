@@ -2,6 +2,8 @@ package com.jin.practice.hospital.Controller;
 
 import com.jin.practice.hospital.dto.HospitalDto;
 import com.jin.practice.hospital.service.HospitalService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,10 +15,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/hospital")
 @RequiredArgsConstructor
+@Tag(name = "Hospital", description = "병원 API")
 public class HospitalController {
     private final HospitalService hospitalService;
 
     @GetMapping
+    @Operation(summary = "병원 목록 조회", description = "등록된 병원 목록을 조회합니다.")
     public ResponseEntity<List<HospitalDto>> list() {
         List<HospitalDto> response = hospitalService.findAll();
 
