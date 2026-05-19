@@ -144,6 +144,20 @@ src
 
 ---
 
+## Swagger API 문서
+
+Springdoc OpenAPI를 적용해 백엔드 API를 Swagger UI에서 확인할 수 있도록 구성했습니다.
+
+애플리케이션 실행 후 아래 주소에서 API 목록, 요청/응답 구조, 인증 필요 여부를 확인할 수 있습니다.
+
+```text
+http://localhost:8080/swagger-ui/index.html
+```
+
+![FORHOS Backend Swagger UI](docs/swagger-ui.png)
+
+---
+
 ## 핵심 구현 포인트
 
 ### JWT 기반 인증
