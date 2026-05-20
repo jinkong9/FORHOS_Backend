@@ -100,4 +100,54 @@ public class ReceptionService {
 
         return ReceptionStatusDto.from(reception, waitingCount);
     }
+
+    public List<ReceptionDto> getMyReceptions(String email) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증되지 않은 사용자입니다"));
+
+        return receptionRepository.findByMember(member)
+                .stream()
+                .sorted(Comparator.comparing(Reception::getQueueTime).reversed())
+                .map(ReceptionDto::from)
+                .toList();
+    }
+
+    public ReceptionDto cancleReception(String email, Long receptionId) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(()-> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "인증되지 않은 사용자입니다"
+                ));
+
+        Reception reception = receptionRepository.findById(receptionId)
+                .orElseThrow(()-> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "접수 내역을 찾을 수 없습니다."
+                ));
+
+        if (reception.getMember().getId() != member.getId()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "본인의 접수만 취소할 수 있습니다."
+            );
+        }
+
+        if (reception.getQueueStatus() == QueueStatus.CANCELED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "이미 취소된 접수입니다."
+            );
+        }
+
+        if (reception.getQueueStatus() != QueueStatus.WAITING) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "대기 중인 접수만 취소할 수 있습니다."
+            );
+        }
+
+        reception.cancel();
+
+        return  ReceptionDto.from(receptionRepository.save(reception));
+    }
 }

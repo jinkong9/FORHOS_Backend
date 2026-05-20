@@ -1,8 +1,14 @@
 package com.jin.practice.hospital.Controller;
 
+import com.jin.practice.common.ErrorResponse;
 import com.jin.practice.hospital.dto.HospitalDto;
 import com.jin.practice.hospital.service.HospitalService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +27,18 @@ public class HospitalController {
 
     @GetMapping
     @Operation(summary = "병원 목록 조회", description = "등록된 병원 목록을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "병원 목록 조회 성공",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = HospitalDto.class)))
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
     public ResponseEntity<List<HospitalDto>> list() {
         List<HospitalDto> response = hospitalService.findAll();
 
