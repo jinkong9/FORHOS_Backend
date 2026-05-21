@@ -13,6 +13,7 @@ import com.jin.practice.reception.entity.Reception;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -27,11 +28,12 @@ public class ReceptionService {
     private final MemberRepository memberRepository;
     private final HospitalRepository hospitalRepository;
 
+    @Transactional
     public ReceptionDto createReception(String email, ReceptionCreateDto receptionCreateDto) {
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증되지 않은 사용자입니다."));
 
-        Hospital hospital = hospitalRepository.findById(receptionCreateDto.hospitalId())
+        Hospital hospital = hospitalRepository.findByIdForUpdate(receptionCreateDto.hospitalId())
                 .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND, "병원을 찾을 수 없습니다."));
 
         LocalDate today = LocalDate.now();

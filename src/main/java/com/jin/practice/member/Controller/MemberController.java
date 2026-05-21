@@ -97,8 +97,8 @@ public class MemberController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> loginMember(HttpServletResponse response) {
-        ResponseCookie accessToken = ResponseCookie.from("accessToken", "")
+    public ResponseEntity<Void> logoutMember(HttpServletResponse response) {
+        ResponseCookie accessToken = ResponseCookie.from("access_token", "")
                 .httpOnly(true)
                 .secure(false)
                 .path("/")
@@ -106,7 +106,15 @@ public class MemberController {
                 .sameSite("Lax")
                 .build();
 
-        ResponseCookie refreshToken = ResponseCookie.from("accessToken", "")
+        ResponseCookie refreshToken = ResponseCookie.from("refresh_token", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+
+        ResponseCookie grantType = ResponseCookie.from("grant_type", "")
                 .httpOnly(true)
                 .secure(false)
                 .path("/")
@@ -116,6 +124,7 @@ public class MemberController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessToken.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshToken.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, grantType.toString());
 
         return ResponseEntity.noContent().build();
     }

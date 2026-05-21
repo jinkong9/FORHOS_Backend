@@ -10,7 +10,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "reception")
+@Table(
+        name = "reception",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_reception_hospital_date_queue_number",
+                columnNames = {"hospital_id", "queue_date", "queue_number"}
+        )
+)
 @NoArgsConstructor
 @Getter
 public class Reception {
@@ -78,7 +84,7 @@ public class Reception {
         this.queueNumber = queueNumber;
         this.queueDate = queueDate;
         this.queueTime = queueTime;
-        this.queueStatus = queueStatus.WAITING;
+        this.queueStatus = QueueStatus.WAITING;
     }
 
     public void call() {
