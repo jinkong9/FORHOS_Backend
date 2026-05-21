@@ -1,4 +1,4 @@
-package com.jin.practice.util;
+package com.jin.practice.auth.jwt;
 
 import com.jin.practice.member.dto.JwtDto;
 import io.jsonwebtoken.Claims;
@@ -56,11 +56,17 @@ public class JwtProvider {
                 .compact();
 
         String refreshToken = Jwts.builder()
+                .subject(authentication.getName())
                 .expiration(new Date(now + accessTokenExpiration * 24))
                 .signWith(key)
                 .compact();
 
         return new JwtDto("Bearer", accessToken, refreshToken);
+    }
+
+    public String getSubject(String token) {
+        Claims claims = parseClaims(token);
+        return claims.getSubject();
     }
 
     public Authentication getAuthentication(String accessToken) {

@@ -1,7 +1,7 @@
 package com.jin.practice.config;
 
 import com.jin.practice.Security.JwtAuthenticationFilter;
-import com.jin.practice.util.JwtProvider;
+import com.jin.practice.auth.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,6 +32,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/hospital", "/api/hospital/**").permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
@@ -39,7 +40,7 @@ public class SecurityConfig {
                                 "/api/members/register",
                                 "/api/members/login",
                                 "/api/members/logout",
-                                "/api/hospital"
+                                "/api/auth/refresh"
                         ).permitAll()
                         .requestMatchers("/api/members/myinfo").authenticated()
                         .anyRequest().authenticated()

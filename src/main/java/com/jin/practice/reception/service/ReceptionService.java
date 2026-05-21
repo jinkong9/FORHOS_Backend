@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -79,28 +80,31 @@ public class ReceptionService {
         Reception reception = receptionRepository.findById(receptionId)
                 .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND, "접수 내역을 찾을 수 없습니다."));
 
-        if(reception.getMember().getId() != member.getId()) {
+        if(!Objects.equals(reception.getMember().getId(), member.getId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "본인의 접수만 조회 가능합니다,"
             );
         }
 
-        LocalDate today = LocalDate.now();
-        int waitingCount = 0;
-
-        if (reception.getQueueStatus() == QueueStatus.WAITING) {
-            waitingCount = receptionRepository.findByHospital_IdAndQueueDate(
-                            reception.getHospital().getId(),
-                            today
-                    )
-                    .stream()
-                    .filter(item -> item.getQueueStatus() == QueueStatus.WAITING)
-                    .filter(item -> item.getQueueNumber() < reception.getQueueNumber())
-                    .toList()
-                    .size();
-        }
+        int waitingCount = calculateWaitingCount(reception);
 
         return ReceptionStatusDto.from(reception, waitingCount);
+    }
+
+    private int calculateWaitingCount(Reception reception) {
+        if (reception.getQueueStatus() != QueueStatus.WAITING) {
+            return 0;
+        }
+
+        return receptionRepository.findByHospital_IdAndQueueDate(
+                        reception.getHospital().getId(),
+                        reception.getQueueDate()
+                )
+                .stream()
+                .filter(item -> item.getQueueStatus() == QueueStatus.WAITING)
+                .filter(item -> item.getQueueNumber() < reception.getQueueNumber())
+                .toList()
+                .size();
     }
 
     public List<ReceptionDto> getMyReceptions(String email) {
@@ -114,7 +118,7 @@ public class ReceptionService {
                 .toList();
     }
 
-    public ReceptionDto cancleReception(String email, Long receptionId) {
+    public ReceptionDto cancelReception(String email, Long receptionId) {
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(()-> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
@@ -127,7 +131,7 @@ public class ReceptionService {
                         "접수 내역을 찾을 수 없습니다."
                 ));
 
-        if (reception.getMember().getId() != member.getId()) {
+        if (!Objects.equals(reception.getMember().getId(), member.getId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "본인의 접수만 취소할 수 있습니다."
@@ -151,5 +155,66 @@ public class ReceptionService {
         reception.cancel();
 
         return  ReceptionDto.from(receptionRepository.save(reception));
+    }
+
+    public ReceptionStatusDto getLatestReceptionStatus(String email) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "인증되지 않은 사용자입니다."
+                ));
+
+        Reception reception = receptionRepository.findByMember(member)
+                .stream()
+                .filter(item ->
+                        item.getQueueStatus() == QueueStatus.WAITING ||
+                                item.getQueueStatus() == QueueStatus.CALLED
+                )
+                .max(Comparator.comparing(Reception::getQueueTime))
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "진행 중인 접수가 없습니다."
+                ));
+
+        int waitingCount = calculateWaitingCount(reception);
+
+        return ReceptionStatusDto.from(reception, waitingCount);
+    }
+
+    @Transactional
+    public ReceptionDto callReception(Long receptionId) {
+        Reception reception = receptionRepository.findById(receptionId)
+                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND, "접수 내역을 찾을 수 없습니다."));
+
+        if(reception.getQueueStatus() != QueueStatus.WAITING) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "대기 중인 접수만 호출 가능합니다."
+            );
+        }
+
+        reception.call();
+
+        return ReceptionDto.from(reception);
+    }
+
+    @Transactional
+    public ReceptionDto completeReception(Long receptionId) {
+        Reception reception = receptionRepository.findById(receptionId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "접수 내역을 찾을 수 없습니다."
+                ));
+
+        if (reception.getQueueStatus() != QueueStatus.CALLED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "호출된 접수만 완료할 수 있습니다."
+            );
+        }
+
+        reception.complete();
+
+        return ReceptionDto.from(reception);
     }
 }

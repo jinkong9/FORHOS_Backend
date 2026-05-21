@@ -29,4 +29,10 @@ public class HospitalService {
         return HospitalDto.from(hospital);
     }
 
+    public HospitalDto findById(long hospitalId) {
+        Hospital hospital = hospitalRepository.findById(hospitalId)
+                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND, "병원을 찾을 수 없습니다."));
+
+        return HospitalDto.from(hospital);
+    }
 }

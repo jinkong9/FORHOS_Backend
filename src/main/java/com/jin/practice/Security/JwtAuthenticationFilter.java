@@ -1,6 +1,6 @@
 package com.jin.practice.Security;
 
-import com.jin.practice.util.JwtProvider;
+import com.jin.practice.auth.jwt.JwtProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

@@ -163,7 +163,38 @@ public class ReceptionController {
         return ResponseEntity.ok(receptionService.getMyReceptions(authentication.getName()));
     }
 
-    @PatchMapping("/{receptionId}/cancle")
+    @GetMapping("/me/latest")
+    @Operation(
+            summary = "내 최신 진행 중 접수 상태 조회",
+            description = "인증된 회원의 가장 최근 진행 중인 접수 상태와 앞 대기 인원을 조회합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "최신 진행 중 접수 상태 조회 성공",
+                    content = @Content(schema = @Schema(implementation = ReceptionStatusDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 또는 토큰 누락",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "진행 중인 접수가 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<ReceptionStatusDto> getLatestReceptionStatus(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                receptionService.getLatestReceptionStatus(authentication.getName())
+        );
+    }
+
+    @PatchMapping("/{receptionId}/cancel")
     @Operation(
             summary = "내 접수 취소",
             description = "인증된 회원의 대기 중인 접수를 취소합니다.",
@@ -201,7 +232,79 @@ public class ReceptionController {
             @PathVariable Long receptionId
     ) {
         return ResponseEntity.ok(
-                receptionService.cancleReception(authentication.getName(), receptionId)
+                receptionService.cancelReception(authentication.getName(), receptionId)
+        );
+    }
+
+    @PatchMapping("/{receptionId}/call")
+    @Operation(
+            summary = "접수 호출",
+            description = "대기 중인 접수를 호출 상태로 변경합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "접수 호출 성공",
+                    content = @Content(schema = @Schema(implementation = ReceptionDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 또는 토큰 누락",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "접수 내역을 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "대기 중인 접수가 아니라 호출할 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<ReceptionDto> callReception(
+            @PathVariable Long receptionId
+    ) {
+        return ResponseEntity.ok(
+                receptionService.callReception(receptionId)
+        );
+    }
+
+    @PatchMapping("/{receptionId}/complete")
+    @Operation(
+            summary = "접수 완료",
+            description = "호출된 접수를 완료 상태로 변경합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "접수 완료 성공",
+                    content = @Content(schema = @Schema(implementation = ReceptionDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 또는 토큰 누락",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "접수 내역을 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "호출된 접수가 아니라 완료할 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<ReceptionDto> completeReception(
+            @PathVariable Long receptionId
+    ) {
+        return ResponseEntity.ok(
+                receptionService.completeReception(receptionId)
         );
     }
 }

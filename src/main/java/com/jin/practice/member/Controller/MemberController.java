@@ -7,7 +7,7 @@ import com.jin.practice.member.dto.MyInfoDto;
 import com.jin.practice.member.dto.RegisterDto;
 import com.jin.practice.member.dto.UpdateMyInfoDto;
 import com.jin.practice.member.service.MemberService;
-import com.jin.practice.util.JwtProvider;
+import com.jin.practice.auth.jwt.JwtProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -97,6 +97,10 @@ public class MemberController {
     }
 
     @PostMapping("/logout")
+    @Operation(summary = "로그아웃", description = "브라우저에 저장된 인증 쿠키를 만료시킵니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "로그아웃 성공")
+    })
     public ResponseEntity<Void> logoutMember(HttpServletResponse response) {
         ResponseCookie accessToken = ResponseCookie.from("access_token", "")
                 .httpOnly(true)
