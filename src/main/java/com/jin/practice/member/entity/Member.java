@@ -41,6 +41,10 @@ public class Member {
     @Column(length = 50)
     private String region;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private MemberRole role = MemberRole.USER;
+
     @Column
     private String extra;
 

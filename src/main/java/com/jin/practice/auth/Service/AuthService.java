@@ -39,7 +39,7 @@ public class AuthService {
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 member.getEmail(),
                 null,
-                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                List.of(new SimpleGrantedAuthority("ROLE_" + member.getRole().name()))
         );
 
         return jwtProvider.createToken(authentication);

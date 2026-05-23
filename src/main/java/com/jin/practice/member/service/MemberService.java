@@ -53,7 +53,7 @@ public class MemberService {
         return new UsernamePasswordAuthenticationToken(
                 member.getEmail(),
                 null,
-                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                List.of(new SimpleGrantedAuthority("ROLE_" + member.getRole().name()))
         );
     }
 

@@ -42,6 +42,8 @@ public class SecurityConfig {
                                 "/api/members/logout",
                                 "/api/auth/refresh"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.PATCH, "/api/reception/*/call").hasAnyRole("HOSPITAL_ADMIN", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/reception/*/complete").hasAnyRole("HOSPITAL_ADMIN", "ADMIN")
                         .requestMatchers("/api/members/myinfo").authenticated()
                         .anyRequest().authenticated()
                 )
