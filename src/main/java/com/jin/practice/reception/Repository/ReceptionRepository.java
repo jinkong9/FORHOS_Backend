@@ -15,5 +15,7 @@ public interface ReceptionRepository extends JpaRepository<Reception, Long> {
             LocalDate queueDate
     );
 
+    List<Reception> findByQueueDate(LocalDate queueDate);
+
     List<Reception> findByMember(Member member);
 }

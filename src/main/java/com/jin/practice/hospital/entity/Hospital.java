@@ -1,6 +1,5 @@
 package com.jin.practice.hospital.entity;
 
-import com.jin.practice.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,5 +43,10 @@ public class Hospital {
             return 0.0;
 
         return Math.round(((double) ratingSum/ratingCount)*10) / 10.0;
+    }
+
+    public void updateWaitingStats(int waitingPeople, int waitingTime) {
+        this.waitingPeople = waitingPeople;
+        this.waitingTime = waitingTime;
     }
 }

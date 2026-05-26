@@ -1,5 +1,6 @@
 package com.jin.practice.member.entity;
 
+import com.jin.practice.hospital.entity.Hospital;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,6 +45,10 @@ public class Member {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private MemberRole role = MemberRole.USER;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hospital_id")
+    private Hospital hospital;
 
     @Column
     private String extra;

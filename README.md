@@ -144,6 +144,17 @@ src
 
 ---
 
+### Admin Reception
+
+| Method | URL | Description | Auth |
+| --- | --- | --- | --- |
+| `GET` | `/api/admin/receptions/today` | Hospital admin's today queue. `ADMIN` can view all hospitals' today queues. | HOSPITAL_ADMIN, ADMIN |
+| `PATCH` | `/api/admin/receptions/{receptionId}/call` | Call a reception for the admin's hospital. | HOSPITAL_ADMIN, ADMIN |
+| `PATCH` | `/api/admin/receptions/{receptionId}/complete` | Complete a called reception for the admin's hospital. | HOSPITAL_ADMIN, ADMIN |
+| `PATCH` | `/api/admin/receptions/{receptionId}/cancel` | Cancel a non-completed reception for the admin's hospital. | HOSPITAL_ADMIN, ADMIN |
+
+---
+
 ## Swagger API 문서
 
 Springdoc OpenAPI를 적용해 백엔드 API를 Swagger UI에서 확인할 수 있도록 구성했습니다.
@@ -401,9 +412,6 @@ gradlew.bat test
 - 기존 질병 정보 등록
 - 증상 키워드 기반 진료과 분류
 - No-show 관리 정책
-- 병원 운영자용 접수 호출/완료/취소 API
-- 병원별 예상 대기 시간 자동 계산
-- Refresh Token 재발급 API
 
 ---
 

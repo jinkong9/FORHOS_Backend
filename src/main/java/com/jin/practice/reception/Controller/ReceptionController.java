@@ -265,10 +265,11 @@ public class ReceptionController {
             )
     })
     public ResponseEntity<ReceptionDto> callReception(
+            Authentication authentication,
             @PathVariable Long receptionId
     ) {
         return ResponseEntity.ok(
-                receptionService.callReception(receptionId)
+                receptionService.callReception(authentication.getName(), receptionId)
         );
     }
 
@@ -301,10 +302,11 @@ public class ReceptionController {
             )
     })
     public ResponseEntity<ReceptionDto> completeReception(
+            Authentication authentication,
             @PathVariable Long receptionId
     ) {
         return ResponseEntity.ok(
-                receptionService.completeReception(receptionId)
+                receptionService.completeReception(authentication.getName(), receptionId)
         );
     }
 }
