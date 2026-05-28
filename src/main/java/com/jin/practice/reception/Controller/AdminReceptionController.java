@@ -81,4 +81,19 @@ public class AdminReceptionController {
                 receptionService.cancelReceptionForHospitalAdmin(authentication.getName(), receptionId)
         );
     }
+
+    @PatchMapping("/{receptionId}/no-show")
+    @Operation(
+            summary = "담당 병원 접수 노쇼 처리",
+            description = "호출 후 방문하지 않은 접수를 노쇼 상태로 변경합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ReceptionDto> markNoShow(
+            Authentication authentication,
+            @PathVariable Long receptionId
+    ) {
+        return ResponseEntity.ok(
+                receptionService.markNoShow(authentication.getName(), receptionId)
+        );
+    }
 }

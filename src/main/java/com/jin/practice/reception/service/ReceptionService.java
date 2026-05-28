@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -242,6 +243,26 @@ public class ReceptionService {
         return ReceptionDto.from(reception);
     }
 
+    @Transactional
+    public ReceptionDto markNoShow(String email, Long receptionId) {
+        Member member = findMemberByEmail(email);
+        Reception reception = findReceptionById(receptionId);
+
+        validateHospitalAdminCanManage(member, reception);
+
+        if (reception.getQueueStatus() != QueueStatus.CALLED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "호출된 접수만 노쇼 처리할 수 있습니다."
+            );
+        }
+
+        reception.markNoShow();
+        refreshHospitalWaitingStats(reception.getHospital());
+
+        return ReceptionDto.from(reception);
+    }
+
     private Member findMemberByEmail(String email) {
         return memberRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -325,10 +346,30 @@ public class ReceptionService {
         int waitingPeople = (int) todayQueue.stream()
                 .filter(reception -> reception.getQueueStatus() == QueueStatus.WAITING)
                 .count();
+        int expectedMinutes = calculateExpectedMinutesPerWaitingReception(hospital.getId());
 
         hospital.updateWaitingStats(
                 waitingPeople,
-                waitingPeople * EXPECTED_MINUTES_PER_WAITING_RECEPTION
+                waitingPeople * expectedMinutes
         );
+    }
+
+    private int calculateExpectedMinutesPerWaitingReception(Long hospitalId) {
+        List<Reception> completedReceptions =
+                receptionRepository.findTop10ByHospital_IdAndQueueStatusAndCalledTimeIsNotNullAndDoneTimeIsNotNullOrderByDoneTimeDesc(
+                        hospitalId,
+                        QueueStatus.COMPLETED
+                );
+
+        double averageMinutes = completedReceptions.stream()
+                .mapToLong(reception -> ChronoUnit.MINUTES.between(
+                        reception.getCalledTime(),
+                        reception.getDoneTime()
+                ))
+                .filter(minutes -> minutes > 0)
+                .average()
+                .orElse(EXPECTED_MINUTES_PER_WAITING_RECEPTION);
+
+        return Math.max(1, (int) Math.round(averageMinutes));
     }
 }

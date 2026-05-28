@@ -40,8 +40,10 @@ public class SecurityConfig {
                                 "/api/members/register",
                                 "/api/members/login",
                                 "/api/members/logout",
-                                "/api/auth/refresh"
+                                "/api/auth/refresh",
+                                "/api/recommendations/**"
                         ).permitAll()
+                        .requestMatchers("/api/admin/members/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasAnyRole("HOSPITAL_ADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/reception/*/call").hasAnyRole("HOSPITAL_ADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/reception/*/complete").hasAnyRole("HOSPITAL_ADMIN", "ADMIN")

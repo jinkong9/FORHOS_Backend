@@ -1,6 +1,7 @@
 package com.jin.practice.reception.Repository;
 
 import com.jin.practice.member.entity.Member;
+import com.jin.practice.reception.entity.QueueStatus;
 import com.jin.practice.reception.entity.Reception;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -16,6 +17,11 @@ public interface ReceptionRepository extends JpaRepository<Reception, Long> {
     );
 
     List<Reception> findByQueueDate(LocalDate queueDate);
+
+    List<Reception> findTop10ByHospital_IdAndQueueStatusAndCalledTimeIsNotNullAndDoneTimeIsNotNullOrderByDoneTimeDesc(
+            Long hospitalId,
+            QueueStatus queueStatus
+    );
 
     List<Reception> findByMember(Member member);
 }

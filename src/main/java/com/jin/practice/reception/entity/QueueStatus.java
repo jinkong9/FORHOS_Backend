@@ -4,5 +4,6 @@ public enum QueueStatus {
     WAITING,
     CALLED,
     COMPLETED,
-    CANCELED
+    CANCELED,
+    NO_SHOW
 }

@@ -125,6 +125,8 @@ src
 | `POST` | `/api/members/logout` | 인증 쿠키 만료 | No |
 | `GET` | `/api/members/myinfo` | 내 정보 조회 | Yes |
 | `PATCH` | `/api/members/myinfo` | 내 정보 수정 | Yes |
+| `GET` | `/api/members/medical-profile` | 내 의료 정보 조회 | Yes |
+| `PATCH` | `/api/members/medical-profile` | 내 의료 정보 수정 | Yes |
 
 ### Hospital
 
@@ -154,6 +156,21 @@ src
 | `PATCH` | `/api/admin/receptions/{receptionId}/call` | 병원 관리자 접수 호출 | `HOSPITAL_ADMIN`, `ADMIN` |
 | `PATCH` | `/api/admin/receptions/{receptionId}/complete` | 병원 관리자 접수 완료 | `HOSPITAL_ADMIN`, `ADMIN` |
 | `PATCH` | `/api/admin/receptions/{receptionId}/cancel` | 병원 관리자 접수 취소 | `HOSPITAL_ADMIN`, `ADMIN` |
+| `PATCH` | `/api/admin/receptions/{receptionId}/no-show` | 호출된 접수 노쇼 처리 | `HOSPITAL_ADMIN`, `ADMIN` |
+
+### Admin Member
+
+| Method | URL | 설명 | 권한 |
+| --- | --- | --- | --- |
+| `POST` | `/api/admin/members/hospital-admin` | 병원 관리자 계정 생성 및 병원 배정 | `ADMIN` |
+| `PATCH` | `/api/admin/members/{memberId}/hospital` | 회원 담당 병원 배정 | `ADMIN` |
+| `PATCH` | `/api/admin/members/{memberId}/role` | 회원 역할 변경 | `ADMIN` |
+
+### Recommendation
+
+| Method | URL | 설명 | 인증 |
+| --- | --- | --- | --- |
+| `POST` | `/api/recommendations/departments` | 증상 키워드 기반 진료과 추천 | No |
 
 ---
 
@@ -451,10 +468,13 @@ gradlew.bat test
 | `SecurityConfigRoleTest` | 관리자 API와 역할 기반 접근 제어 |
 | `ApplicationPropertiesSecurityTest` | 보안 관련 설정값 |
 | `MemberServiceRoleTest` | 회원 역할 처리 |
+| `MemberServiceAdminTest` | 병원 관리자 생성, 역할 변경, 병원 배정 |
+| `MemberServiceMedicalProfileTest` | 회원 의료 정보 조회와 수정 |
 | `MemberControllerLogoutTest` | 로그아웃 응답과 쿠키 만료 |
 | `ReceptionSchemaTest` | 접수 Entity 스키마 |
-| `ReceptionServiceTest` | 접수 생성, 상태 조회, 취소/호출/완료 로직 |
+| `ReceptionServiceTest` | 접수 생성, 상태 조회, 취소/호출/완료/노쇼와 대기 시간 계산 |
 | `AdminReceptionControllerTest` | 관리자 접수 API |
+| `SymptomRecommendationServiceTest` | 증상 키워드 기반 진료과 추천 |
 
 ---
 
@@ -465,6 +485,7 @@ gradlew.bat test
 - `/api/reception/hospital/{receptionId}/status`는 path 이름상 hospital ID처럼 보이지만 실제 변수는 `receptionId`입니다. 추후 `/api/reception/{receptionId}/status`처럼 더 명확한 URL로 정리할 수 있습니다.
 - 공통 에러 응답 포맷을 더 일관되게 정리할 수 있습니다.
 - 병원 운영자 기능은 호출/완료/취소 흐름을 중심으로 더 확장할 수 있습니다.
+- 병원 운영 통계 대시보드, 사용자 no-show 이력 기반 패널티 정책, 증상 추천 키워드 고도화가 다음 확장 후보입니다.
 
 ---
 

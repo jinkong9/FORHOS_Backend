@@ -3,6 +3,7 @@ package com.jin.practice.member.Controller;
 import com.jin.practice.common.ErrorResponse;
 import com.jin.practice.member.dto.JwtDto;
 import com.jin.practice.member.dto.LoginDto;
+import com.jin.practice.member.dto.MedicalProfileDto;
 import com.jin.practice.member.dto.MyInfoDto;
 import com.jin.practice.member.dto.RegisterDto;
 import com.jin.practice.member.dto.UpdateMyInfoDto;
@@ -190,5 +191,30 @@ public class MemberController {
         MyInfoDto response = memberService.updateInfo(authentication.getName(), updateMyInfoDto);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/medical-profile")
+    @Operation(
+            summary = "의료 정보 조회",
+            description = "인증된 회원의 복용약, 기존 질병, 알레르기, 특이사항을 조회합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<MedicalProfileDto> getMedicalProfile(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(memberService.getMedicalProfile(authentication.getName()));
+    }
+
+    @PatchMapping("/medical-profile")
+    @Operation(
+            summary = "의료 정보 수정",
+            description = "인증된 회원의 의료 정보를 수정합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<MedicalProfileDto> updateMedicalProfile(
+            Authentication authentication,
+            @RequestBody MedicalProfileDto dto
+    ) {
+        return ResponseEntity.ok(memberService.updateMedicalProfile(authentication.getName(), dto));
     }
 }

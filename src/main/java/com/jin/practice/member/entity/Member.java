@@ -50,6 +50,9 @@ public class Member {
     @JoinColumn(name = "hospital_id")
     private Hospital hospital;
 
+    @Embedded
+    private MemberMedicalProfile medicalProfile;
+
     @Column
     private String extra;
 
@@ -72,5 +75,17 @@ public class Member {
         if (phone != null) this.phone = phone;
         if (region != null) this.region = region;
         if (extra != null) this.extra = extra;
+    }
+
+    public void updateRole(MemberRole role) {
+        this.role = role;
+    }
+
+    public void assignHospital(Hospital hospital) {
+        this.hospital = hospital;
+    }
+
+    public void updateMedicalProfile(MemberMedicalProfile medicalProfile) {
+        this.medicalProfile = medicalProfile;
     }
 }

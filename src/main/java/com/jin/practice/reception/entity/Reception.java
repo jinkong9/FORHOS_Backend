@@ -66,6 +66,9 @@ public class Reception {
     @Column(name = "canceled_time")
     private LocalDateTime canceledTime;
 
+    @Column(name = "no_show_time")
+    private LocalDateTime noShowTime;
+
     public Reception(
             Member member,
             Hospital hospital,
@@ -100,5 +103,10 @@ public class Reception {
     public void cancel() {
         this.queueStatus = QueueStatus.CANCELED;
         this.canceledTime = LocalDateTime.now();
+    }
+
+    public void markNoShow() {
+        this.queueStatus = QueueStatus.NO_SHOW;
+        this.noShowTime = LocalDateTime.now();
     }
 }

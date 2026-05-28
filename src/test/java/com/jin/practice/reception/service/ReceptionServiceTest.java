@@ -172,6 +172,54 @@ class ReceptionServiceTest {
         assertThat(hospital.getWaitingTime()).isEqualTo(10);
     }
 
+    @Test
+    void waitTimeUsesAverageCompletedReceptionDuration() {
+        ReceptionRepository receptionRepository = mock(ReceptionRepository.class);
+        MemberRepository memberRepository = mock(MemberRepository.class);
+        ReceptionService receptionService = new ReceptionService(receptionRepository, memberRepository, null);
+        Member admin = hospitalAdminWithHospital(1L);
+        Reception calledReception = waitingReception();
+        Reception firstWaitingReception = waitingReceptionWithIdAndQueueNumber(2L, 2);
+        Reception secondWaitingReception = waitingReceptionWithIdAndQueueNumber(3L, 3);
+        Reception completedReception = completedReceptionWithDuration(20);
+        Hospital hospital = calledReception.getHospital();
+
+        when(memberRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
+        when(receptionRepository.findById(1L)).thenReturn(Optional.of(calledReception));
+        when(receptionRepository.findByHospital_IdAndQueueDate(1L, LocalDate.now()))
+                .thenReturn(List.of(calledReception, firstWaitingReception, secondWaitingReception));
+        when(receptionRepository.findTop10ByHospital_IdAndQueueStatusAndCalledTimeIsNotNullAndDoneTimeIsNotNullOrderByDoneTimeDesc(
+                1L,
+                QueueStatus.COMPLETED
+        )).thenReturn(List.of(completedReception));
+
+        receptionService.callReception("admin@example.com", 1L);
+
+        assertThat(hospital.getWaitingPeople()).isEqualTo(2);
+        assertThat(hospital.getWaitingTime()).isEqualTo(40);
+    }
+
+    @Test
+    void markNoShowChangesCalledReceptionToNoShowAndRefreshesStats() {
+        ReceptionRepository receptionRepository = mock(ReceptionRepository.class);
+        MemberRepository memberRepository = mock(MemberRepository.class);
+        ReceptionService receptionService = new ReceptionService(receptionRepository, memberRepository, null);
+        Member admin = hospitalAdminWithHospital(1L);
+        Reception reception = waitingReception();
+        reception.call();
+
+        when(memberRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
+        when(receptionRepository.findById(1L)).thenReturn(Optional.of(reception));
+        when(receptionRepository.findByHospital_IdAndQueueDate(1L, LocalDate.now()))
+                .thenReturn(List.of(reception));
+
+        ReceptionDto response = receptionService.markNoShow("admin@example.com", 1L);
+
+        assertThat(response.queueStatus()).isEqualTo(QueueStatus.NO_SHOW);
+        assertThat(reception.getNoShowTime()).isNotNull();
+        assertThat(reception.getHospital().getWaitingPeople()).isZero();
+    }
+
     private Reception waitingReception() {
         Member member = memberWithRole(MemberRole.USER);
         Hospital hospital = hospitalWithId(1L);
@@ -202,6 +250,15 @@ class ReceptionServiceTest {
                 LocalDateTime.now()
         );
         ReflectionTestUtils.setField(reception, "id", id);
+        return reception;
+    }
+
+    private Reception completedReceptionWithDuration(int minutes) {
+        Reception reception = waitingReceptionWithIdAndQueueNumber(99L, 99);
+        LocalDateTime calledTime = LocalDateTime.now().minusMinutes(minutes + 1L);
+        ReflectionTestUtils.setField(reception, "queueStatus", QueueStatus.COMPLETED);
+        ReflectionTestUtils.setField(reception, "calledTime", calledTime);
+        ReflectionTestUtils.setField(reception, "doneTime", calledTime.plusMinutes(minutes));
         return reception;
     }
 
