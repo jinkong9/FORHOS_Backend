@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -63,5 +64,18 @@ class SecurityConfigRoleTest {
                                 }
                                 """))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void publicPostApisDoNotRequireCsrfToken() throws Exception {
+        mockMvc.perform(post("/api/recommendations/departments")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "symptom": "기침과 발열"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.department").value("내과"));
     }
 }
