@@ -5,6 +5,9 @@ import com.jin.practice.reception.entity.QueueStatus;
 import com.jin.practice.reception.entity.VisitType;
 import com.jin.practice.reception.service.ReceptionService;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -32,6 +35,33 @@ class AdminReceptionControllerTest {
         ResponseEntity<List<ReceptionDto>> response = controller.getMyHospitalTodayQueue(authentication);
 
         assertThat(response.getBody()).containsExactly(reception);
+    }
+
+    @Test
+    void adminReceptionSearchPassesFiltersAndPageable() {
+        ReceptionService receptionService = mock(ReceptionService.class);
+        AdminReceptionController controller = new AdminReceptionController(receptionService);
+        Authentication authentication = new UsernamePasswordAuthenticationToken("admin@example.com", null);
+        ReceptionDto reception = receptionDto();
+        LocalDate date = LocalDate.of(2026, 7, 8);
+        PageRequest pageable = PageRequest.of(1, 10);
+        Page<ReceptionDto> page = new PageImpl<>(List.of(reception), pageable, 1);
+
+        when(receptionService.getReceptionsForHospitalAdmin(
+                "admin@example.com",
+                date,
+                QueueStatus.WAITING,
+                pageable
+        )).thenReturn(page);
+
+        ResponseEntity<Page<ReceptionDto>> response = controller.getReceptions(
+                authentication,
+                date,
+                QueueStatus.WAITING,
+                pageable
+        );
+
+        assertThat(response.getBody()).isEqualTo(page);
     }
 
     @Test

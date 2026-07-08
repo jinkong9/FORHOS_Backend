@@ -12,6 +12,9 @@ import com.jin.practice.reception.entity.QueueStatus;
 import com.jin.practice.reception.entity.Reception;
 import com.jin.practice.reception.entity.VisitType;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -25,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ReceptionServiceTest {
@@ -115,6 +120,61 @@ class ReceptionServiceTest {
     }
 
     @Test
+    void hospitalAdminReceptionSearchReturnsOwnHospitalQueueWithDateAndStatus() {
+        ReceptionRepository receptionRepository = mock(ReceptionRepository.class);
+        MemberRepository memberRepository = mock(MemberRepository.class);
+        ReceptionService receptionService = new ReceptionService(receptionRepository, memberRepository, null);
+        Member admin = hospitalAdminWithHospital(1L);
+        Reception reception = waitingReception();
+        LocalDate date = LocalDate.of(2026, 7, 8);
+        PageRequest pageable = PageRequest.of(0, 20);
+
+        when(memberRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
+        when(receptionRepository.findByHospital_IdAndQueueDateAndQueueStatus(
+                1L,
+                date,
+                QueueStatus.WAITING,
+                pageable
+        )).thenReturn(new PageImpl<>(List.of(reception), pageable, 1));
+
+        Page<ReceptionDto> response = receptionService.getReceptionsForHospitalAdmin(
+                "admin@example.com",
+                date,
+                QueueStatus.WAITING,
+                pageable
+        );
+
+        assertThat(response.getContent()).hasSize(1);
+        assertThat(response.getContent().getFirst().hospitalId()).isEqualTo(1L);
+        assertThat(response.getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void adminReceptionSearchReturnsAllHospitalsAndDefaultsToToday() {
+        ReceptionRepository receptionRepository = mock(ReceptionRepository.class);
+        MemberRepository memberRepository = mock(MemberRepository.class);
+        ReceptionService receptionService = new ReceptionService(receptionRepository, memberRepository, null);
+        Member admin = memberWithRole(MemberRole.ADMIN);
+        Reception reception = waitingReception();
+        PageRequest pageable = PageRequest.of(0, 20);
+
+        when(memberRepository.findByEmail("root@example.com")).thenReturn(Optional.of(admin));
+        when(receptionRepository.findByQueueDate(LocalDate.now(), pageable))
+                .thenReturn(new PageImpl<>(List.of(reception), pageable, 1));
+
+        Page<ReceptionDto> response = receptionService.getReceptionsForHospitalAdmin(
+                "root@example.com",
+                null,
+                null,
+                pageable
+        );
+
+        assertThat(response.getContent()).hasSize(1);
+        assertThat(response.getContent().getFirst().hospitalId()).isEqualTo(1L);
+        assertThat(response.getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
     void createReceptionUpdatesHospitalWaitingStats() {
         ReceptionRepository receptionRepository = mock(ReceptionRepository.class);
         MemberRepository memberRepository = mock(MemberRepository.class);
@@ -149,6 +209,63 @@ class ReceptionServiceTest {
 
         assertThat(hospital.getWaitingPeople()).isEqualTo(2);
         assertThat(hospital.getWaitingTime()).isEqualTo(20);
+    }
+
+    @Test
+    void createReceptionRejectsDuplicateActiveReceptionForSameHospitalToday() {
+        ReceptionRepository receptionRepository = mock(ReceptionRepository.class);
+        MemberRepository memberRepository = mock(MemberRepository.class);
+        HospitalRepository hospitalRepository = mock(HospitalRepository.class);
+        ReceptionService receptionService = new ReceptionService(receptionRepository, memberRepository, hospitalRepository);
+        Member member = memberWithRole(MemberRole.USER);
+        Hospital hospital = hospitalWithId(1L);
+
+        when(memberRepository.findByEmail("user@example.com")).thenReturn(Optional.of(member));
+        when(hospitalRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(hospital));
+        when(receptionRepository.existsByMemberAndHospital_IdAndQueueDateAndQueueStatusIn(
+                member,
+                1L,
+                LocalDate.now(),
+                List.of(QueueStatus.WAITING, QueueStatus.CALLED)
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> receptionService.createReception("user@example.com", new ReceptionCreateDto(
+                1L,
+                "Patient",
+                VisitType.FIRST,
+                "Headache"
+        )))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verify(receptionRepository, never()).save(any(Reception.class));
+    }
+
+    @Test
+    void createReceptionRejectsClosedHospital() {
+        ReceptionRepository receptionRepository = mock(ReceptionRepository.class);
+        MemberRepository memberRepository = mock(MemberRepository.class);
+        HospitalRepository hospitalRepository = mock(HospitalRepository.class);
+        ReceptionService receptionService = new ReceptionService(receptionRepository, memberRepository, hospitalRepository);
+        Member member = memberWithRole(MemberRole.USER);
+        Hospital hospital = hospitalWithId(1L);
+        ReflectionTestUtils.setField(hospital, "openStatus", false);
+
+        when(memberRepository.findByEmail("user@example.com")).thenReturn(Optional.of(member));
+        when(hospitalRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(hospital));
+
+        assertThatThrownBy(() -> receptionService.createReception("user@example.com", new ReceptionCreateDto(
+                1L,
+                "Patient",
+                VisitType.FIRST,
+                "Headache"
+        )))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verify(receptionRepository, never()).save(any(Reception.class));
     }
 
     @Test

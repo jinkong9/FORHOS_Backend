@@ -12,6 +12,8 @@ import com.jin.practice.reception.dto.ReceptionStatusDto;
 import com.jin.practice.reception.entity.QueueStatus;
 import com.jin.practice.reception.entity.Reception;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
@@ -41,7 +44,11 @@ public class ReceptionService {
         Hospital hospital = hospitalRepository.findByIdForUpdate(receptionCreateDto.hospitalId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "병원을 찾을 수 없습니다."));
 
-        LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = now.toLocalDate();
+
+        validateHospitalAcceptingReception(hospital, today, now.toLocalTime());
+        validateNoActiveReception(member, receptionCreateDto.hospitalId(), today);
 
         List<Reception> todayQueue = receptionRepository.findByHospital_IdAndQueueDate(
                 receptionCreateDto.hospitalId(), today);
@@ -59,13 +66,38 @@ public class ReceptionService {
                 receptionCreateDto.symptom(),
                 nextQueueNumber,
                 today,
-                LocalDateTime.now()
+                now
         );
 
         Reception savedReception = receptionRepository.save(reception);
         updateHospitalWaitingStats(hospital, appendReception(todayQueue, savedReception));
 
         return ReceptionDto.from(savedReception);
+    }
+
+    private void validateHospitalAcceptingReception(Hospital hospital, LocalDate date, LocalTime time) {
+        if (!hospital.acceptsReception(date, time)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "현재 접수 가능한 시간이 아닙니다."
+            );
+        }
+    }
+
+    private void validateNoActiveReception(Member member, Long hospitalId, LocalDate queueDate) {
+        boolean hasActiveReception = receptionRepository.existsByMemberAndHospital_IdAndQueueDateAndQueueStatusIn(
+                member,
+                hospitalId,
+                queueDate,
+                List.of(QueueStatus.WAITING, QueueStatus.CALLED)
+        );
+
+        if (hasActiveReception) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "이미 진행 중인 접수가 있습니다."
+            );
+        }
     }
 
     public List<ReceptionDto> getTodayReceptions(Long hospitalId) {
@@ -94,6 +126,56 @@ public class ReceptionService {
         Hospital hospital = getManageableHospital(member);
 
         return getTodayReceptions(hospital.getId());
+    }
+
+    public Page<ReceptionDto> getReceptionsForHospitalAdmin(
+            String email,
+            LocalDate queueDate,
+            QueueStatus queueStatus,
+            Pageable pageable
+    ) {
+        Member member = findMemberByEmail(email);
+        LocalDate targetDate = queueDate == null ? LocalDate.now() : queueDate;
+
+        Page<Reception> receptions;
+        if (member.getRole() == MemberRole.ADMIN) {
+            receptions = findAdminReceptions(targetDate, queueStatus, pageable);
+        } else {
+            Hospital hospital = getManageableHospital(member);
+            receptions = findHospitalAdminReceptions(hospital.getId(), targetDate, queueStatus, pageable);
+        }
+
+        return receptions.map(ReceptionDto::from);
+    }
+
+    private Page<Reception> findAdminReceptions(
+            LocalDate queueDate,
+            QueueStatus queueStatus,
+            Pageable pageable
+    ) {
+        if (queueStatus == null) {
+            return receptionRepository.findByQueueDate(queueDate, pageable);
+        }
+
+        return receptionRepository.findByQueueDateAndQueueStatus(queueDate, queueStatus, pageable);
+    }
+
+    private Page<Reception> findHospitalAdminReceptions(
+            Long hospitalId,
+            LocalDate queueDate,
+            QueueStatus queueStatus,
+            Pageable pageable
+    ) {
+        if (queueStatus == null) {
+            return receptionRepository.findByHospital_IdAndQueueDate(hospitalId, queueDate, pageable);
+        }
+
+        return receptionRepository.findByHospital_IdAndQueueDateAndQueueStatus(
+                hospitalId,
+                queueDate,
+                queueStatus,
+                pageable
+        );
     }
 
     public ReceptionStatusDto getReceptionStatus(String email, Long receptionId) {

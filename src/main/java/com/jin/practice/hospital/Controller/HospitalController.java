@@ -2,6 +2,7 @@ package com.jin.practice.hospital.Controller;
 
 import com.jin.practice.common.ErrorResponse;
 import com.jin.practice.hospital.dto.HospitalDto;
+import com.jin.practice.hospital.dto.HospitalSortOption;
 import com.jin.practice.hospital.service.HospitalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -10,10 +11,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -40,8 +46,19 @@ public class HospitalController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public ResponseEntity<List<HospitalDto>> list() {
-        List<HospitalDto> response = hospitalService.findAll();
+    public ResponseEntity<?> list(
+            HttpServletRequest request,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "false") boolean openOnly,
+            @RequestParam(defaultValue = "ID_ASC") HospitalSortOption sort,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        if (request.getQueryString() == null) {
+            List<HospitalDto> response = hospitalService.findAll();
+            return ResponseEntity.ok(response);
+        }
+
+        Page<HospitalDto> response = hospitalService.search(keyword, openOnly, sort, pageable);
 
         return ResponseEntity.ok(response);
     }
