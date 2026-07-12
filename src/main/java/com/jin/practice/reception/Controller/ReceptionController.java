@@ -1,9 +1,12 @@
 package com.jin.practice.reception.Controller;
 
 import com.jin.practice.common.ErrorResponse;
+import com.jin.practice.reception.dto.ReceptionAsyncResponseDto;
 import com.jin.practice.reception.dto.ReceptionCreateDto;
+import com.jin.practice.reception.dto.ReceptionCreateMessage;
 import com.jin.practice.reception.dto.ReceptionDto;
 import com.jin.practice.reception.dto.ReceptionStatusDto;
+import com.jin.practice.reception.service.ReceptionCreateProducer;
 import com.jin.practice.reception.service.ReceptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -26,7 +29,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/reception")
@@ -34,6 +39,7 @@ import java.util.List;
 @Tag(name = "Reception", description = "접수 및 대기열 API")
 public class ReceptionController {
     private final ReceptionService receptionService;
+    private final ReceptionCreateProducer receptionCreateProducer;
 
     @PostMapping
     @Operation(
@@ -75,6 +81,34 @@ public class ReceptionController {
         URI location = URI.create("/api/reception/" + response.id());
 
         return ResponseEntity.created(location).body(response);
+    }
+
+    @PostMapping("/async")
+    @Operation(
+            summary = "비동기 접수 요청",
+            description = "접수 요청 메시지를 RabbitMQ에 발행하고 즉시 202 Accepted를 반환합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ReceptionAsyncResponseDto> createReceptionAsync(
+            Authentication authentication,
+            @Valid @RequestBody ReceptionCreateDto receptionCreateDto
+    ) {
+        String requestId = UUID.randomUUID().toString();
+
+        receptionCreateProducer.publish(new ReceptionCreateMessage(
+                requestId,
+                authentication.getName(),
+                receptionCreateDto.hospitalId(),
+                receptionCreateDto.patientName(),
+                receptionCreateDto.visitType(),
+                receptionCreateDto.symptom(),
+                LocalDateTime.now()
+        ));
+
+        return ResponseEntity.accepted().body(new ReceptionAsyncResponseDto(
+                requestId,
+                "ACCEPTED"
+        ));
     }
 
     @GetMapping("/hospital/{hospitalId}/today")

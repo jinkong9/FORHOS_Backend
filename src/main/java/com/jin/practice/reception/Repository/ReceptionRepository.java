@@ -6,6 +6,8 @@ import com.jin.practice.reception.entity.Reception;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -16,6 +18,17 @@ public interface ReceptionRepository extends JpaRepository<Reception, Long> {
     List<Reception> findByHospital_IdAndQueueDate(
             Long hospitalId,
             LocalDate queueDate
+    );
+
+    @Query("""
+            select coalesce(max(r.queueNumber), 0)
+            from Reception r
+            where r.hospital.id = :hospitalId
+            and r.queueDate = :queueDate
+            """)
+    int findMaxQueueNumberByHospitalIdAndQueueDate(
+            @Param("hospitalId") Long hospitalId,
+            @Param("queueDate") LocalDate queueDate
     );
 
     List<Reception> findByQueueDate(LocalDate queueDate);

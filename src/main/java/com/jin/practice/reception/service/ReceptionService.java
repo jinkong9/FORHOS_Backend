@@ -11,7 +11,7 @@ import com.jin.practice.reception.dto.ReceptionDto;
 import com.jin.practice.reception.dto.ReceptionStatusDto;
 import com.jin.practice.reception.entity.QueueStatus;
 import com.jin.practice.reception.entity.Reception;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -24,18 +24,54 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
 @Service
-@RequiredArgsConstructor
 public class ReceptionService {
     private static final int EXPECTED_MINUTES_PER_WAITING_RECEPTION = 10;
 
     private final ReceptionRepository receptionRepository;
     private final MemberRepository memberRepository;
     private final HospitalRepository hospitalRepository;
+    private final QueueNumberGenerator queueNumberGenerator;
+    private final ReceptionWaitingQueueStore waitingQueueStore;
+
+    @Autowired
+    public ReceptionService(
+            ReceptionRepository receptionRepository,
+            MemberRepository memberRepository,
+            HospitalRepository hospitalRepository,
+            QueueNumberGenerator queueNumberGenerator,
+            ReceptionWaitingQueueStore waitingQueueStore
+    ) {
+        this.receptionRepository = receptionRepository;
+        this.memberRepository = memberRepository;
+        this.hospitalRepository = hospitalRepository;
+        this.queueNumberGenerator = queueNumberGenerator;
+        this.waitingQueueStore = waitingQueueStore;
+    }
+
+    public ReceptionService(
+            ReceptionRepository receptionRepository,
+            MemberRepository memberRepository,
+            HospitalRepository hospitalRepository
+    ) {
+        this(
+                receptionRepository,
+                memberRepository,
+                hospitalRepository,
+                (hospitalId, date) -> receptionRepository.findByHospital_IdAndQueueDate(hospitalId, date)
+                        .stream()
+                        .mapToInt(Reception::getQueueNumber)
+                        .max()
+                        .orElse(0) + 1,
+                null
+        );
+    }
 
     @Transactional
     public ReceptionDto createReception(String email, ReceptionCreateDto receptionCreateDto) {
@@ -53,10 +89,7 @@ public class ReceptionService {
         List<Reception> todayQueue = receptionRepository.findByHospital_IdAndQueueDate(
                 receptionCreateDto.hospitalId(), today);
 
-        int nextQueueNumber = todayQueue.stream()
-                .mapToInt(Reception::getQueueNumber)
-                .max()
-                .orElse(0) + 1;
+        int nextQueueNumber = queueNumberGenerator.next(receptionCreateDto.hospitalId(), today);
 
         Reception reception = new Reception(
                 member,
@@ -70,6 +103,7 @@ public class ReceptionService {
         );
 
         Reception savedReception = receptionRepository.save(reception);
+        addWaitingQueue(savedReception);
         updateHospitalWaitingStats(hospital, appendReception(todayQueue, savedReception));
 
         return ReceptionDto.from(savedReception);
@@ -103,7 +137,7 @@ public class ReceptionService {
     public List<ReceptionDto> getTodayReceptions(Long hospitalId) {
         LocalDate today = LocalDate.now();
 
-        return receptionRepository.findByHospital_IdAndQueueDate(hospitalId, today)
+        return findTodayWaitingReceptions(hospitalId, today)
                 .stream()
                 .sorted(Comparator.comparingInt(Reception::getQueueNumber))
                 .map(ReceptionDto::from)
@@ -198,6 +232,15 @@ public class ReceptionService {
             return 0;
         }
 
+        if (waitingQueueStore != null) {
+            return waitingQueueStore.countWaitingBefore(reception)
+                    .orElseGet(() -> calculateWaitingCountFromDatabase(reception));
+        }
+
+        return calculateWaitingCountFromDatabase(reception);
+    }
+
+    private int calculateWaitingCountFromDatabase(Reception reception) {
         return receptionRepository.findByHospital_IdAndQueueDate(
                         reception.getHospital().getId(),
                         reception.getQueueDate()
@@ -233,6 +276,7 @@ public class ReceptionService {
 
         validateCancelableByUser(reception);
         reception.cancel();
+        removeWaitingQueue(reception);
         refreshHospitalWaitingStats(reception.getHospital());
 
         return ReceptionDto.from(reception);
@@ -260,6 +304,7 @@ public class ReceptionService {
         }
 
         reception.cancel();
+        removeWaitingQueue(reception);
         refreshHospitalWaitingStats(reception.getHospital());
 
         return ReceptionDto.from(reception);
@@ -300,6 +345,7 @@ public class ReceptionService {
         }
 
         reception.call();
+        removeWaitingQueue(reception);
         refreshHospitalWaitingStats(reception.getHospital());
 
         return ReceptionDto.from(reception);
@@ -320,6 +366,7 @@ public class ReceptionService {
         }
 
         reception.complete();
+        removeWaitingQueue(reception);
         refreshHospitalWaitingStats(reception.getHospital());
 
         return ReceptionDto.from(reception);
@@ -340,6 +387,7 @@ public class ReceptionService {
         }
 
         reception.markNoShow();
+        removeWaitingQueue(reception);
         refreshHospitalWaitingStats(reception.getHospital());
 
         return ReceptionDto.from(reception);
@@ -413,6 +461,74 @@ public class ReceptionService {
     private List<Reception> appendReception(List<Reception> receptions, Reception reception) {
         return Stream.concat(receptions.stream(), Stream.of(reception))
                 .toList();
+    }
+
+    private List<Reception> findTodayWaitingReceptions(Long hospitalId, LocalDate today) {
+        if (waitingQueueStore != null) {
+            return waitingQueueStore.findWaitingReceptionIds(hospitalId, today)
+                    .map(receptionIds -> findReceptionsByIdsOrFallback(hospitalId, today, receptionIds))
+                    .orElseGet(() -> findTodayWaitingReceptionsFromDatabaseAndWarmRedis(hospitalId, today));
+        }
+
+        return findTodayWaitingReceptionsFromDatabase(hospitalId, today);
+    }
+
+    private List<Reception> findReceptionsByIdsOrFallback(
+            Long hospitalId,
+            LocalDate today,
+            List<Long> receptionIds
+    ) {
+        List<Reception> receptions = findReceptionsByIdsPreservingOrder(receptionIds);
+
+        if (!receptionIds.isEmpty() && receptions.size() != receptionIds.size()) {
+            return findTodayWaitingReceptionsFromDatabaseAndWarmRedis(hospitalId, today);
+        }
+
+        return receptions;
+    }
+
+    private List<Reception> findReceptionsByIdsPreservingOrder(List<Long> receptionIds) {
+        Map<Long, Reception> receptionsById = new HashMap<>();
+        receptionRepository.findAllById(receptionIds)
+                .forEach(reception -> receptionsById.put(reception.getId(), reception));
+
+        return receptionIds.stream()
+                .map(receptionsById::get)
+                .filter(Objects::nonNull)
+                .filter(reception -> reception.getQueueStatus() == QueueStatus.WAITING)
+                .toList();
+    }
+
+    private List<Reception> findTodayWaitingReceptionsFromDatabaseAndWarmRedis(Long hospitalId, LocalDate today) {
+        List<Reception> receptions = findTodayWaitingReceptionsFromDatabase(hospitalId, today);
+        warmWaitingQueue(hospitalId, today, receptions);
+        return receptions;
+    }
+
+    private List<Reception> findTodayWaitingReceptionsFromDatabase(Long hospitalId, LocalDate today) {
+        return receptionRepository.findByHospital_IdAndQueueDate(hospitalId, today)
+                .stream()
+                .filter(reception -> reception.getQueueStatus() == QueueStatus.WAITING)
+                .sorted(Comparator.comparingInt(Reception::getQueueNumber))
+                .toList();
+    }
+
+    private void addWaitingQueue(Reception reception) {
+        if (waitingQueueStore != null) {
+            waitingQueueStore.addWaiting(reception);
+        }
+    }
+
+    private void removeWaitingQueue(Reception reception) {
+        if (waitingQueueStore != null) {
+            waitingQueueStore.remove(reception);
+        }
+    }
+
+    private void warmWaitingQueue(Long hospitalId, LocalDate date, List<Reception> receptions) {
+        if (waitingQueueStore != null) {
+            waitingQueueStore.replaceWaitingQueue(hospitalId, date, receptions);
+        }
     }
 
     private void refreshHospitalWaitingStats(Hospital hospital) {
